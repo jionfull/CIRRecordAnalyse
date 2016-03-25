@@ -123,7 +123,7 @@ namespace CIRRecordAnalyse
 
                     int rowIndex = k % CountPerSheet + 1;
                     HSSFRow row = sheet1.CreateRow(rowIndex);
-                    row.CreateCell(0).SetCellValue(listSerialRecord[k].RecordTime.ToString("yyyy-MM-dd HH:mm:ss"));
+                    row.CreateCell(0).SetCellValue(listSerialRecord[k].RecordTime.ToString("yyyy-MM-dd HH:mm:ss.fff"));
                     row.CreateCell(1).SetCellValue(listSerialRecord[k].SrcPortName);
                     row.CreateCell(2).SetCellValue(listSerialRecord[k].DstPortName);
                     row.CreateCell(3).SetCellValue(listSerialRecord[k].TypeName);

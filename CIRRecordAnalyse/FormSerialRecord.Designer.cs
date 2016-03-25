@@ -113,13 +113,13 @@
             // gridColumn1
             // 
             this.gridColumn1.Caption = "时间";
-            this.gridColumn1.DisplayFormat.FormatString = "yyyy-MM-dd HH:mm:ss";
+            this.gridColumn1.DisplayFormat.FormatString = "yyyy-MM-dd HH:mm:ss.fff";
             this.gridColumn1.DisplayFormat.FormatType = DevExpress.Utils.FormatType.DateTime;
             this.gridColumn1.FieldName = "RecordTime";
             this.gridColumn1.Name = "gridColumn1";
             this.gridColumn1.Visible = true;
             this.gridColumn1.VisibleIndex = 0;
-            this.gridColumn1.Width = 130;
+            this.gridColumn1.Width = 150;
             // 
             // gridColumn2
             // 

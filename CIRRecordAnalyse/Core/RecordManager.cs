@@ -15,6 +15,7 @@ namespace CIRRecordAnalyse.Core
         private bool disposed = false;
         static readonly string[] RecordFileNames = new string[] { "MENU.bin", "DATA.bin", "WAVE.bin", };
 
+        readonly static long[] FileMaxMapSize = new long[] { 10L * 1024L * 1024L, 100L * 1024L * 1024L, 400L * 1024L * 1024L, }; //10M,100M,400M
         IntPtr[] FileMappingHandles = new IntPtr[RecordFileNames.Length];   //内存映射文件句柄
         IntPtr[] FileMemBase = new IntPtr[RecordFileNames.Length];          //内存映射文件基地址
 
@@ -47,6 +48,8 @@ namespace CIRRecordAnalyse.Core
 
         public event EventHandler<DataParseArgs> DataParseEvent;
 
+
+        public int Version = 0; //legacy=0 1=new 
         public List<RecordSerial> SerialRecordList
         {
             get { return listSerial; }
@@ -120,10 +123,6 @@ namespace CIRRecordAnalyse.Core
 
         public int CreateFileMem(string path)
         {
-            //Win32API.UnmapViewOfFile(memFileBase);
-            //Dispose(); 
-            //for (int i = 0; i < FileMemBase.Length; i++)
-            //    Win32API.UnmapViewOfFile(FileMemBase[i]);
             if (FileLoaded) return 0;
             int result = 1;
             if (Directory.Exists(path) == false) return result; //目录不存在
@@ -158,8 +157,9 @@ namespace CIRRecordAnalyse.Core
                 FileMappingHandles[i] = Win32API.CreateFileMapping(fileHandle, IntPtr.Zero, Win32API.PAGE_READWRITE, 0, 0, null);
                 if (FileMappingHandles[i] == IntPtr.Zero)
                 {
-                    DisposeHandles();
-                    return result;
+                    //DisposeHandles();
+                    //return result;
+                    continue;
                 }
                 result++;
                 SYSTEM_INFO systemInfo = new SYSTEM_INFO();
@@ -178,9 +178,9 @@ namespace CIRRecordAnalyse.Core
                 blockBytes = fileSize;
                 if (fileSize < 1 * allocationGranularity)
                 {
-                    blockBytes = allocationGranularity;
+                    //blockBytes = allocationGranularity;
                 }
-                if (blockBytes > MaxMapSize)
+                if (blockBytes > FileMaxMapSize[i])
                 {
                     blockBytes = MaxMapSize;
                 }
@@ -192,6 +192,17 @@ namespace CIRRecordAnalyse.Core
                     DisposeHandles();
                     return result;
                 }
+                unsafe
+                {
+                    if (i == 1) //串口数据
+                    {
+                        if ((*(uint*)(FileMemBase[i])) == 0x01524553)
+                        {
+                            Version = 1;
+                        }
+                    }
+                }
+                
                 result++;
             }
 
@@ -221,8 +232,19 @@ namespace CIRRecordAnalyse.Core
 
         public void ParseFile()
         {
-            ParseVoiceFile();
-            ParseSerialFile();
+            if (Version == 0)
+            {
+                ParseVoiceFile();
+                ParseLegacySerialFile();
+            }
+            else
+            {
+                ParseVoiceFile();
+                ParseNewSerialFile();
+            }
+
+            
+         
         }
 
 
@@ -302,7 +324,58 @@ namespace CIRRecordAnalyse.Core
 
         }
 
-        private unsafe void ParseSerialFile()
+
+        private unsafe void ParseNewSerialFile()
+        {
+            if (FileLoaded == false) return;
+            int parseSize = 0;
+
+            while (parseSize<FilesSize[1])
+            {
+                SerialBlock* blockSerial = (SerialBlock*)((long)FileMemBase[1] + parseSize);
+
+                if (blockSerial->Tag0 != 'S') break;
+                if (blockSerial->Tag1 != 'E') break;
+                if (blockSerial->Tag2 != 'R') break;
+                if (blockSerial->Type != 1) break;
+
+                int frameLength = blockSerial->FrameLen;
+
+                int blockSize = (frameLength + 15) / 16 * 16+16;
+
+                parseSize += blockSize;
+
+
+                int year = blockSerial->Year;
+                int month = blockSerial->Month;
+                int day = blockSerial->Day;
+                int hour = blockSerial->Hour;
+                int minute = blockSerial->Minute;
+                int second = blockSerial->Second;
+                int milSec = blockSerial->MilliSecond;
+
+                if (year >= 0 && year <= 99 && month >= 1 && month <= 12 && day >= 1 && day <= 31 && hour >= 0 && hour <= 23 && minute >= 0 && minute <= 59 && second >= 0 && second <= 59 && milSec >= 0 && milSec <= 999)
+                {
+                    DateTime time = new DateTime(year + 2000, month, day, hour, minute, second, milSec);
+                    RecordStatus recordStatus = new RecordStatus(time, blockSerial->Status, blockSerial->Lattery);
+                    listStatus.Add(recordStatus);
+
+                    byte* frame = blockSerial->Reserved;
+                    RecordSerial rs = new RecordSerial((IntPtr)frame, 0, frameLength, time);
+
+                    
+                    rs.SrcPort = frame[4]; 
+                    rs.DstPort = frame[frame[5] + 6];
+                    rs.RecordType = frame[frame[frame[5] + 7] + frame[5] + 8];
+                    rs.Command = frame[frame[frame[5] + 7] + frame[5] + 9];
+                    listSerial.Add(rs);
+                }
+
+            }
+
+        }
+
+        private unsafe void ParseLegacySerialFile()
         {
             if (FileLoaded == false) return;
 
@@ -536,6 +609,7 @@ namespace CIRRecordAnalyse.Core
 
         private int SearchSerialIndex(DateTime time)
         {
+            if (listSerial.Count <= 0) return -1;
             if (time <= listSerial[0].RecordTime) return 0;
             if (time >= listSerial[listSerial.Count - 1].RecordTime) return listSerial.Count - 1;
 
@@ -1045,6 +1119,43 @@ namespace CIRRecordAnalyse.Core
         [FieldOffset(16)]
         public unsafe fixed byte Reserved[240];
 
+    }
+
+    [StructLayout(LayoutKind.Explicit)]
+    struct SerialBlock
+    {
+        [FieldOffset(0)]
+        public byte Tag0;
+        [FieldOffset(1)]
+        public byte Tag1;
+        [FieldOffset(2)]
+        public byte Tag2;
+        [FieldOffset(3)]
+        public byte Type;
+
+        [FieldOffset(4)]
+        public byte FrameLen;
+        [FieldOffset(5)]
+        public byte Status;
+        [FieldOffset(6)]
+        public ushort Lattery;
+        [FieldOffset(8)]
+        public byte Year;
+        [FieldOffset(9)]
+        public byte Month;
+        [FieldOffset(10)]
+        public byte Day;
+        [FieldOffset(11)]
+        public byte Hour;
+        [FieldOffset(12)]
+        public byte Minute;
+        [FieldOffset(13)]
+        public byte Second;
+        [FieldOffset(14)]
+        public UInt16 MilliSecond;
+
+        [FieldOffset(16)]
+        public unsafe fixed byte Reserved[240]; //最多240个
 
 
     }

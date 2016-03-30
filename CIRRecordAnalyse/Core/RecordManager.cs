@@ -329,7 +329,7 @@ namespace CIRRecordAnalyse.Core
         {
             if (FileLoaded == false) return;
             int parseSize = 0;
-
+            long percent = 0;
             while (parseSize<FilesSize[1])
             {
                 SerialBlock* blockSerial = (SerialBlock*)((long)FileMemBase[1] + parseSize);
@@ -371,7 +371,23 @@ namespace CIRRecordAnalyse.Core
                     listSerial.Add(rs);
                 }
 
+                long tPer = parseSize * 100 / FilesSize[1];
+                if (tPer != percent)
+                {
+                    percent = tPer;
+                    if (DataParseEvent != null)
+                    {
+                        DataParseEvent(this, new DataParseArgs(1, tPer));
+                    }
+                }
+
             }
+            if (DataParseEvent != null)
+            {
+                DataParseEvent(this, new DataParseArgs(2, 0));
+            }
+            listStatus.Sort(new CompareStatusRecord());
+            listSerial.Sort(new CompareSerialRecord());
 
         }
 

@@ -328,7 +328,7 @@ namespace CIRRecordAnalyse.Core
         private unsafe void ParseNewSerialFile()
         {
             if (FileLoaded == false) return;
-            int parseSize = 0;
+            long parseSize = 0;
             long percent = 0;
             while (parseSize<FilesSize[1])
             {
@@ -357,7 +357,7 @@ namespace CIRRecordAnalyse.Core
                 if (year >= 0 && year <= 99 && month >= 1 && month <= 12 && day >= 1 && day <= 31 && hour >= 0 && hour <= 23 && minute >= 0 && minute <= 59 && second >= 0 && second <= 59 && milSec >= 0 && milSec <= 999)
                 {
                     DateTime time = new DateTime(year + 2000, month, day, hour, minute, second, milSec);
-                    RecordStatus recordStatus = new RecordStatus(time, blockSerial->Status, blockSerial->Lattery);
+                    RecordStatus recordStatus = new RecordStatus(time, blockSerial->Status, blockSerial->Lattery,(char)1);
                     listStatus.Add(recordStatus);
 
                     byte* frame = blockSerial->Reserved;
@@ -372,6 +372,9 @@ namespace CIRRecordAnalyse.Core
                 }
 
                 long tPer = parseSize * 100 / FilesSize[1];
+                if (tPer < 0) {
+                    Console.WriteLine();
+                }
                 if (tPer != percent)
                 {
                     percent = tPer;
@@ -438,7 +441,7 @@ namespace CIRRecordAnalyse.Core
                     if (year >= 0 && year <= 99 && month >= 1 && month <= 12 && day >= 1 && day <= 31 && hour >= 0 && hour <= 23 && minute >= 0 && minute <= 59 && second >= 0 && second <= 59 && milSec >= 0 && milSec <= 9)
                     {
                         DateTime time = new DateTime(year + 2000, month, day, hour, minute, second, milSec * 100);
-                        RecordStatus recordStatus = new RecordStatus(time, pSDS->Status, pSDS->Voltage);
+                        RecordStatus recordStatus = new RecordStatus(time, pSDS->Status, pSDS->Voltage,(char)0);
                         listStatus.Add(recordStatus);
 
                         PushSerialData((byte*)(pSDS), 16, 256 - 16, time);

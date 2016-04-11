@@ -10,14 +10,15 @@ namespace CIRRecordAnalyse.Core
         
 
         DateTime recordTime;
-
+        char version;
         byte status ;
         ushort voltage ;
-        public RecordStatus(DateTime time,byte status,ushort voltage)
+        public RecordStatus(DateTime time,byte status,ushort voltage,char version)
         {
             this.recordTime = time;
             this.status = status;
             this.voltage = voltage;
+            this.version = version;
         }
 
         public DateTime RecordTime
@@ -29,14 +30,14 @@ namespace CIRRecordAnalyse.Core
         {
             get
             {
-                return (status & 0x01) == 0 ? "低电平" : "高电平";
+                return (status & 0x01) == 0 ? "无效" : "有效";
             }
         }
         public string RecordSignal
         {
             get
             {
-                return ((status >> 1) & 0x01) == 0 ? "低电平" : "高电平";
+                return ((status >> 1) & 0x01) == 0 ? "录音中" : "无录音";
             }
         }
 
@@ -83,7 +84,14 @@ namespace CIRRecordAnalyse.Core
         {
             get
             {
-                return Helper.BCD2Int((byte)(voltage & 0xff)) + "." + Helper.BCD2Int((byte)((voltage >> 8) & 0xff));
+                if (version == 0)
+                {
+                    return Helper.BCD2Int((byte)(voltage & 0xff)) + "." + Helper.BCD2Int((byte)((voltage >> 8) & 0xff));
+                }
+                else
+                {
+                    return (voltage / 1000) + "." + (voltage % 1000);
+                }
             }
         }
 

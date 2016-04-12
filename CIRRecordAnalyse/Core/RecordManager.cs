@@ -334,11 +334,11 @@ namespace CIRRecordAnalyse.Core
             {
                 SerialBlock* blockSerial = (SerialBlock*)((long)FileMemBase[1] + parseSize);
 
-                if (blockSerial->Tag0 != 'S') break;
-                if (blockSerial->Tag1 != 'E') break;
-                if (blockSerial->Tag2 != 'R') break;
-                if (blockSerial->Type != 1) break;
-
+                if ((blockSerial->Tag0 != 'S') || (blockSerial->Tag1 != 'E') || (blockSerial->Tag2 != 'R') || (blockSerial->Type != 1))
+                {
+                    parseSize += 16;
+                    continue;
+                }
                 int frameLength = blockSerial->FrameLen;
 
                 int blockSize = (frameLength + 15) / 16 * 16+16;
@@ -357,18 +357,22 @@ namespace CIRRecordAnalyse.Core
                 if (year >= 0 && year <= 99 && month >= 1 && month <= 12 && day >= 1 && day <= 31 && hour >= 0 && hour <= 23 && minute >= 0 && minute <= 59 && second >= 0 && second <= 59 && milSec >= 0 && milSec <= 999)
                 {
                     DateTime time = new DateTime(year + 2000, month, day, hour, minute, second, milSec);
-                    RecordStatus recordStatus = new RecordStatus(time, blockSerial->Status, blockSerial->Lattery,(char)1);
+                    RecordStatus recordStatus = new RecordStatus(time, blockSerial->Status, blockSerial->Lattery, (char)1);
                     listStatus.Add(recordStatus);
 
                     byte* frame = blockSerial->Reserved;
                     RecordSerial rs = new RecordSerial((IntPtr)frame, 0, frameLength, time);
 
-                    
-                    rs.SrcPort = frame[4]; 
+
+                    rs.SrcPort = frame[4];
                     rs.DstPort = frame[frame[5] + 6];
                     rs.RecordType = frame[frame[frame[5] + 7] + frame[5] + 8];
                     rs.Command = frame[frame[frame[5] + 7] + frame[5] + 9];
                     listSerial.Add(rs);
+                }
+                else
+                {
+ 
                 }
 
                 long tPer = parseSize * 100 / FilesSize[1];

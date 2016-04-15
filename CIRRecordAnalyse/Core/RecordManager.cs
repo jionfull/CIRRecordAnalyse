@@ -15,7 +15,7 @@ namespace CIRRecordAnalyse.Core
         private bool disposed = false;
         static readonly string[] RecordFileNames = new string[] { "MENU.bin", "DATA.bin", "WAVE.bin", };
 
-        readonly static long[] FileMaxMapSize = new long[] { 10L * 1024L * 1024L, 100L * 1024L * 1024L, 400L * 1024L * 1024L, }; //10M,100M,400M
+        readonly static long[] FileMaxMapSize = new long[] { 10L * 1024L * 1024L, 400L * 1024L * 1024L, 400L * 1024L * 1024L, }; //10M,100M,400M
         IntPtr[] FileMappingHandles = new IntPtr[RecordFileNames.Length];   //内存映射文件句柄
         IntPtr[] FileMemBase = new IntPtr[RecordFileNames.Length];          //内存映射文件基地址
 

@@ -17,6 +17,19 @@ namespace CIRRecordAnalyse.Core
         uint blockCount = 0;
         float timeLen = 0;
         FileStream fs;
+        int version = 0;
+
+
+        public RecordVoice(DateTime time, uint blockStart, uint blockCount, IntPtr membase)
+        {
+            version = 1;
+            recordTime = time;
+            this.startBlock = blockStart;
+            this.blockCount = blockCount;
+            endBlock = startBlock + blockCount - 1;
+            timeLen = ((blockCount * 512f) * 4f) / 16000f;
+        }
+
         public RecordVoice(DateTime time, uint blockStart, uint blockCount, FileStream fs)
         {
             recordTime = time;
@@ -84,8 +97,11 @@ namespace CIRRecordAnalyse.Core
         {
             get
             {
-                if (fs == null) return false;
-                if (fs.Length < (startBlock - 2001) * 512) return false;
+                if (version == 0)
+                {
+                    if (fs == null) return false;
+                    if (fs.Length < (startBlock - 2001) * 512) return false;
+                }
 
                 return true;
             }
@@ -106,23 +122,30 @@ namespace CIRRecordAnalyse.Core
         {
             if (IsValid==false) return false;
 
-            byte[] buffer = new byte[blockCount * 512];
-
-            if (startBlock + blockCount -1<= VoiceBlockEnd)
+            if (version == 0)
             {
+                byte[] buffer = new byte[blockCount * 512];
 
-                fs.Position = (startBlock - VoiceBlockOffset) * 512;
-                fs.Read(buffer, 0, buffer.Length);
+                if (startBlock + blockCount - 1 <= VoiceBlockEnd)
+                {
+
+                    fs.Position = (startBlock - VoiceBlockOffset) * 512;
+                    fs.Read(buffer, 0, buffer.Length);
+
+                }
+                else
+                {
+
+                }
+
+                byte[] savearray = Helper.VoiceEncode.G726ToPCMDecode(buffer, buffer.Length);
+                SavePCMWaveFile(savearray, path);
 
             }
             else
             {
  
             }
-
-            byte[] savearray =Helper.VoiceEncode.G726ToPCMDecode(buffer, buffer.Length);
-            SavePCMWaveFile(savearray, path);
-
 
             return true;
         }

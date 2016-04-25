@@ -29,7 +29,7 @@ namespace CIRRecordAnalyse.Core
             this.startBlock = blockStart;
             this.blockCount = blockCount;
             endBlock = startBlock + blockCount - 1;
-            timeLen = ((blockCount * 512f) * 4f) / 16000f;
+            timeLen = ((blockCount * 512f) * 8f) / 16000f;
             this.frameLength = frameLength;
             this.memBase = membase;
         }

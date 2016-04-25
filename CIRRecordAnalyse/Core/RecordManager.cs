@@ -291,7 +291,7 @@ namespace CIRRecordAnalyse.Core
                 if (year >= 0 && year <= 99 && month >= 1 && month <= 12 && day >= 1 && day <= 31 && hour >= 0 && hour <= 23 && minute >= 0 && minute <= 59 && second >= 0 && second <= 59 && milSec >= 0 && milSec <= 999)
                 {
                     DateTime time = new DateTime(year + 2000, month, day, hour, minute, second, milSec);
-                    RecordVoice recordVoice = new RecordVoice(time, (uint)(parseSize / 512), (uint)(blockSize / 512), (IntPtr)blockSerial);
+                    RecordVoice recordVoice = new RecordVoice(time, (uint)(parseSize / 512), (uint)(blockSize / 512), (IntPtr)blockSerial,frameLength);
                     listVoice.Add(recordVoice);
                 }
                 else

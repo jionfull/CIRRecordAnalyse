@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Text;
 using System.IO;
 using CIRRecordAnalyse.Utilities;
+using NSpeex;
 
 namespace CIRRecordAnalyse.Core
 {
@@ -17,10 +18,11 @@ namespace CIRRecordAnalyse.Core
         uint blockCount = 0;
         float timeLen = 0;
         FileStream fs;
+        IntPtr memBase;
         int version = 0;
+        int frameLength = 0;
 
-
-        public RecordVoice(DateTime time, uint blockStart, uint blockCount, IntPtr membase)
+        public RecordVoice(DateTime time, uint blockStart, uint blockCount, IntPtr membase,int frameLength)
         {
             version = 1;
             recordTime = time;
@@ -28,6 +30,8 @@ namespace CIRRecordAnalyse.Core
             this.blockCount = blockCount;
             endBlock = startBlock + blockCount - 1;
             timeLen = ((blockCount * 512f) * 4f) / 16000f;
+            this.frameLength = frameLength;
+            this.memBase = membase;
         }
 
         public RecordVoice(DateTime time, uint blockStart, uint blockCount, FileStream fs)
@@ -144,12 +148,51 @@ namespace CIRRecordAnalyse.Core
             }
             else
             {
- 
+                byte[] buffer = new byte[frameLength];
+                short[] wav = new short[frameLength*5];
+                unsafe
+                {
+                    byte* frameBase = ((byte*)memBase) + 16;
+                    for (int i = 0; i < frameLength; i++)
+                    {
+                        buffer[i] = frameBase[i];
+                    }
+                }
+
+                SpeexDecoder speexDecoder = new SpeexDecoder(BandMode.Narrow, true);
+
+                int index = 0;
+                int decodeLen = 0;
+                while (index < frameLength)
+                {
+                    short len = BitConverter.ToInt16(buffer, index);
+                    if (len + 2+index >= frameLength) break;
+
+                    int wavLen = speexDecoder.Decode(buffer, index + 2, len, wav, decodeLen, false);
+
+                    index += (2 + len);
+                    decodeLen += wavLen;
+                }
+
+                byte[] data = new byte[decodeLen * 2];
+                for (int i = 0; i < decodeLen; i++)
+                {
+                    data[i * 2] = (byte)(wav[i] & 0xff);
+                    data[i * 2+1] = (byte)((wav[i]>>8) & 0xff);
+                }
+
+                SavePCMWaveFile(data, path);
+
+          
+
+
             }
 
             return true;
         }
 
+        
+ 
         public void SavePCMWaveFile(byte[] readbyte, string path)
         {
             using (FileStream fs = new FileStream(path, FileMode.Create))
@@ -167,13 +210,13 @@ namespace CIRRecordAnalyse.Core
                 Array.Copy(BitConverter.GetBytes(j), 0, headbyte, 20, 2);
                 j = 1;
                 Array.Copy(BitConverter.GetBytes(j), 0, headbyte, 0x16, 2);
-                i = 0x1f40;
+                i = 8000;
                 Array.Copy(BitConverter.GetBytes(i), 0, headbyte, 0x18, 4);
-                i = 0x3e80;
+                i = 16000;
                 Array.Copy(BitConverter.GetBytes(i), 0, headbyte, 0x1c, 4);
                 j = 2;
                 Array.Copy(BitConverter.GetBytes(j), 0, headbyte, 0x20, 2);
-                i = 0x10;
+                i = 16;
                 Array.Copy(BitConverter.GetBytes(i), 0, headbyte, 0x22, 2);
                 len = Encoding.Default.GetBytes("data", 0, 4, headbyte, 0x24);
                 i = (uint)readbyte.Length;
